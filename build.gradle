@@ -1,0 +1,144 @@
+buildscript {
+    dependencies {
+        classpath 'ctp.gradle.plugin:ctp-uk-gradle-bootstrap-plugin:[2.15.0,2.16.0]'
+        classpath 'ctp.gradle.plugin:ctp-gradle-githooks-plugin:[1.0,2.0]'
+        classpath 'org.owasp:dependency-check-gradle:4.0.0'
+    }
+}
+
+apply plugin: 'groovy'
+apply plugin: 'ctp-bootstrap'
+apply plugin: 'ctp-githooks'
+apply plugin: 'org.owasp.dependencycheck'
+
+jacoco {
+    coverageExclusions = ['**/com/ctp/interactive/bl/test/**', '**/com/camelot/**', '**/com/camelotinteractive/game/**']
+    coverageTarget << [
+            'instruction': 75,
+            'branch'     : 50,
+            'complexity' : 65,
+            'method'     : 77,
+    ]
+}
+
+allprojects {
+
+    defaultTasks 'clean', 'build'
+    apply plugin: 'eclipse'
+
+    group = 'com.ctp.interactive.bl'
+    if (project.hasProperty('blClientVersion')) {
+        version = "${blClientVersion}"
+        // jjravn: This is a legacy property replaced by blClientVersion.
+        // Should be removed once all build pipelines are updated to use blClientVersion.
+    } else if (project.hasProperty('rpmVersion')) {
+        version = "${rpmVersion}"
+    } else {
+        version = "0.1-SNAPSHOT"
+    }
+
+    apply from: bootstrap.script('IdeaSupport')
+
+    whenHasPlugin('java') {
+        project.plugins.apply('ctp-module')
+        test {
+            jvmArgs '-noverify', '-Xms1024m', '-Xmx1024m'
+            if (org.gradle.internal.jvm.Jvm.current().javaVersion < JavaVersion.VERSION_1_8) {
+                jvmArgs << '-XX:MaxPermSize=256m'
+            }
+        }
+    }
+
+    afterEvaluate {
+        whenHasPlugin('java') {
+
+            
+			javadoc {
+				source = sourceSets.main.allJava
+				classpath = configurations.compile
+			}
+            
+
+            dependencyManagement {
+                dependencies {
+                    if (['com.ctp.interactive.bl', 'com.camelot.automation'].contains(project.group)) {
+                        dependency "com.ctp.interactive.il:bl-il-connector:$ilConnectorVersion"
+                        dependencySet(group: 'ctp.audit', version: '1.17.309') {
+                            entry 'audit-feed-api'
+                            entry 'audit-feed-runtime'
+                        }
+                        dependency 'org.mockito:mockito-core:1.10.19'
+                        dependency 'com.natpryce:make-it-easy:3.1.0'
+                        dependency 'javax.jms:jms-api:1.1-rev-1'
+                        dependency 'com.opencsv:opencsv:3.8'
+                        dependency 'org.bouncycastle:bcpg-jdk15on:1.60'
+                        dependency 'org.freemarker:freemarker:2.3.21'
+                        dependency 'org.glassfish.web:javax.el:2.2.6'
+                        dependency 'org.hibernate:hibernate-validator:5.2.4.Final'
+                        dependency 'org.meanbean:meanbean:2.0.3'
+                        dependency 'org.modelmapper:modelmapper:0.7.3'
+                        dependency 'org.powermock:powermock-mockito-release-full:1.6.4'
+                        dependency 'org.springframework.security:spring-security-core:3.2.6.RELEASE'
+
+                        dependency('org.springframework.data:spring-data-jpa:1.10.4.RELEASE') {
+                            exclude 'org.aspectj:aspectjrt'
+                        }
+
+                        dependencySet(group: 'org.apache.activemq', version: '5.15.3') {
+                            entry 'activemq-client', {
+                                exclude 'commons-net:commons-net'
+                            }
+                            entry 'activemq-spring', {
+                                exclude 'org.apache.activemq:activemq-openwire-legacy'
+                                exclude 'org.apache.activemq:activeio-core'
+                                exclude 'org.apache.xbean:xbean-spring'
+                            }
+                            entry 'activemq-broker'
+                        }
+
+                        dependencySet(group: 'org.flywaydb', version: flywayVersion) {
+                            entry 'flyway-commandline'
+                            entry 'flyway-core'
+                            entry 'flyway-gradle-plugin'
+                        }
+
+                        dependencySet(group: 'org.hibernate', version: '5.4.1.Final') {
+                            entry 'hibernate-core'
+                            entry 'hibernate-entitymanager'
+                        }
+
+                        dependencySet(group: 'ctp', version: '[2.1.0,2.2.0]') {
+                            entry 'gtech-api'
+                            entry 'gtech-test-support'
+                        }
+                    }
+                    dependency 'ctp.rest.client:ctp-rest-client-api:[2.2.0,2.3.0]'
+                    dependency 'ctp.rest.client:ctp-rest-client-runtime:[2.3.0,2.4.0]'
+                    dependency 'ctp.voucherexpress:ctp-voucherexpress-connector:1.0.+'
+                    dependency 'ctp.core:ctp-core-errors:[1.3.0,1.4.0]'
+
+                    dependency 'com.github.tomakehurst:wiremock:1.58'
+                    dependency 'javax.validation:validation-api:1.1.0.Final'
+
+                    dependency 'org.springframework.security.oauth:spring-security-oauth2:2.0.8.RELEASE'
+                    dependency 'com.squareup.okhttp:okhttp:2.7.5'
+                    dependency 'org.reflections:reflections:0.9.10'
+
+                }
+            }
+        }
+    }
+    codenarcTest {
+        exclude("**/**/*.groovy")
+    }
+    //TODO: temporarily disabled, enable after fixing violations
+    codenarcMain{
+        exclude("**/**/*.groovy")
+    }
+
+    //TODO: temporarily disabled, enable after fixing violations
+    codenarcAll{
+        exclude("**/**/*.groovy")
+    }
+
+}
